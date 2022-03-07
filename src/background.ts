@@ -7,6 +7,10 @@
  * allowed) for reading when searched.
  */
 
+chrome.runtime.onInstalled.addListener(() => {
+  console.info("Extension has been installed!");
+});
+
 // let color = "#3aa757";
 
 // chrome.runtime.onInstalled.addListener(() => {
