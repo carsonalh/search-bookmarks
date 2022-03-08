@@ -1,0 +1,37 @@
+.App {
+  min-width: 400px;
+}
+
+.App input {
+  box-sizing: border-box;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.App ul {
+  list-style: none;
+  padding: 0;
+}
+
+.App li {
+  padding: 12px 6px;
+  margin-bottom: 14px;
+}
+
+.App li:last-of-type {
+  margin-bottom: 0;
+}
+
+.App li.selected {
+  background-color: lightgrey;
+}
+
+.App li a {
+  font-size: 1rem;
+  text-decoration: underline;
+  color: rgb(65, 65, 65);
+}
+
+.App li strong {
+  color: black;
+}

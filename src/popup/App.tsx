@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import "./App.css";
 
 const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,12 +18,25 @@ const App = () => {
     // (idk what?)
 
     // For now, we'll just get all the bookmarks
-    chrome.bookmarks.getTree(([root]) => {
+
+    // Sync version:
+    // chrome.bookmarks.getTree(([root]) => {
+    //   if (!root || !root.children) {
+    //     console.error("The root or it's children was nullish. I give up.");
+    //   }
+    //   setBookmarks(root);
+    // });
+
+    // Async/await version:
+    const getBookmarks = async () => {
+      const [root] = await chrome.bookmarks.getTree();
       if (!root || !root.children) {
         console.error("The root or it's children was nullish. I give up.");
       }
-      setBookmarks(root);
-    });
+      return root;
+    };
+
+    getBookmarks().then(setBookmarks);
   }, []);
 
   // Focus the input on popup
@@ -96,22 +110,37 @@ const App = () => {
 
   const keyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     console.debug(e.key);
-    const listeningFor = ["ArrowUp", "ArrowDown", "Enter"];
-    if (listeningFor.includes(e.key)) {
-      e.preventDefault();
 
-      if (e.key === "ArrowUp") {
-        selectUp();
-      } else if (e.key === "ArrowDown") {
-        selectDown();
-      } else if (e.key === "Enter") {
-        gotoSelected();
-      }
+    if (e.key === "ArrowUp" || (e.ctrlKey && e.key == "k")) {
+      e.preventDefault();
+      selectUp();
+    } else if (e.key === "ArrowDown" || (e.ctrlKey && e.key == "j")) {
+      e.preventDefault();
+      selectDown();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      gotoSelected();
+    }
+  };
+
+  const getMatchParts = (
+    term: string,
+    text: string
+  ): [before: string, match: string, after: string] => {
+    const match = text.toLowerCase().indexOf(term.toLowerCase());
+    if (match < 0) {
+      return [text, "", ""];
+    } else {
+      return [
+        text.substring(0, match),
+        text.substring(match, match + term.length),
+        text.substring(match + term.length),
+      ];
     }
   };
 
   return (
-    <>
+    <div className="App">
       <input
         ref={inputRef}
         onKeyDown={keyDown}
@@ -121,17 +150,31 @@ const App = () => {
         value={searchTerm}
       />
       <ul>
-        {searchResults.map((bookmark, i) =>
-          selectedResult === i ? (
-            <li style={{ color: "red" }} key={bookmark.id}>
-              {bookmark.title}
+        {searchResults.map((bookmark, i) => {
+          const [before, match, after] = getMatchParts(
+            searchTerm,
+            bookmark.title
+          );
+          return selectedResult === i ? (
+            <li className="selected" key={bookmark.id}>
+              <a href={bookmark.url}>
+                {before}
+                <strong>{match}</strong>
+                {after}
+              </a>
             </li>
           ) : (
-            <li key={bookmark.id}>{bookmark.title}</li>
-          )
-        )}
+            <li key={bookmark.id}>
+              <a href={bookmark.url}>
+                {before}
+                <strong>{match}</strong>
+                {after}
+              </a>
+            </li>
+          );
+        })}
       </ul>
-    </>
+    </div>
   );
 };
 

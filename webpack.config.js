@@ -8,7 +8,7 @@ module.exports = {
   entry: {
     background: "./src/background.ts",
     options: "./src/options.ts",
-    popup: "./src/popup.tsx",
+    popup: "./src/popup/index.tsx",
   },
   output: {
     path: path.join(__dirname, "dist"),
@@ -30,9 +30,22 @@ module.exports = {
               "@babel/preset-react",
               "@babel/preset-typescript",
             ],
-            plugins: ["@babel/plugin-proposal-class-properties"],
+            plugins: [
+              "@babel/plugin-proposal-class-properties",
+              [
+                "@babel/plugin-transform-runtime",
+                {
+                  regenerator: true,
+                },
+              ],
+            ],
           },
         },
+      },
+      {
+        test: /\.css$/,
+        exclude: /node_modules/,
+        use: ["style-loader", "css-loader"],
       },
     ],
   },
@@ -51,7 +64,7 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       filename: "popup.html",
-      template: "src/popup.html",
+      template: "src/popup/index.html",
       chunks: ["popup"],
     }),
     new HtmlWebpackPlugin({
