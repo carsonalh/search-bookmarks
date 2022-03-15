@@ -1,38 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { searchBookmarkTree, SearchResult } from "./search";
 
 const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [bookmarks, setBookmarks] =
     useState<null | chrome.bookmarks.BookmarkTreeNode>(null);
-  const [searchResults, setSearchResults] = useState<
-    chrome.bookmarks.BookmarkTreeNode[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // On mount, fetch the bookmarks with the chrome api
   useEffect(() => {
     // We'll go ahead and make the trie here later
 
-    // We could do this with async/await but something breaks when I try that
-    // (idk what?)
-
     // For now, we'll just get all the bookmarks
-
-    // Sync version:
-    // chrome.bookmarks.getTree(([root]) => {
-    //   if (!root || !root.children) {
-    //     console.error("The root or it's children was nullish. I give up.");
-    //   }
-    //   setBookmarks(root);
-    // });
-
-    // Async/await version:
     const getBookmarks = async () => {
+      // I wouldn't assume getTree guarantees the _entire_ bookmark tree, but
+      // this has been working so far
       const [root] = await chrome.bookmarks.getTree();
-      if (!root || !root.children) {
-        console.error("The root or it's children was nullish. I give up.");
+
+      if (!root) {
+        throw new Error("The bookmark root was nullish.");
       }
+
       return root;
     };
 
@@ -48,39 +39,17 @@ const App = () => {
     inputRef.current.focus();
   }, [inputRef.current]);
 
+  // Re-run the search when "serachTerm" changes
   useEffect(() => {
     if (bookmarks === null) {
       return;
     }
 
-    function getBookmarksAsList(
-      node: chrome.bookmarks.BookmarkTreeNode
-    ): chrome.bookmarks.BookmarkTreeNode[] {
-      if (node.children) {
-        const bookmarks = [] as chrome.bookmarks.BookmarkTreeNode[];
-        for (const c of node.children) {
-          bookmarks.push(...getBookmarksAsList(c));
-        }
-        bookmarks.push(node);
-        return bookmarks;
-      } else {
-        return [node];
-      }
-    }
-
-    const array = getBookmarksAsList(bookmarks);
-
-    const results = array.filter(
-      (bookmark) =>
-        searchTerm !== "" &&
-        bookmark.url !== undefined &&
-        bookmark.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
+    const results = searchBookmarkTree(searchTerm, bookmarks);
     setSearchResults(results);
   }, [searchTerm]);
 
-  const selectOffset = (offset: number) => {
+  const offsetSelection = (offset: number) => {
     if (searchResults.length === 0) {
       setSelectedResult(0);
     } else {
@@ -92,15 +61,12 @@ const App = () => {
     }
   };
 
-  const selectUp = () => selectOffset(-1);
-  const selectDown = () => selectOffset(1);
-
-  const gotoSelected = () => {
+  const openSelectedUrl = () => {
     const bookmark = searchResults[selectedResult];
     if (!bookmark) {
       return;
     }
-    const title = searchResults[selectedResult].title;
+    const title = searchResults[selectedResult].text;
     console.debug(`Opening bookmark "${title}"`);
     const url = searchResults[selectedResult].url;
     chrome.tabs.create({
@@ -113,29 +79,13 @@ const App = () => {
 
     if (e.key === "ArrowUp" || (e.ctrlKey && e.key == "k")) {
       e.preventDefault();
-      selectUp();
+      offsetSelection(-1);
     } else if (e.key === "ArrowDown" || (e.ctrlKey && e.key == "j")) {
       e.preventDefault();
-      selectDown();
+      offsetSelection(1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      gotoSelected();
-    }
-  };
-
-  const getMatchParts = (
-    term: string,
-    text: string
-  ): [before: string, match: string, after: string] => {
-    const match = text.toLowerCase().indexOf(term.toLowerCase());
-    if (match < 0) {
-      return [text, "", ""];
-    } else {
-      return [
-        text.substring(0, match),
-        text.substring(match, match + term.length),
-        text.substring(match + term.length),
-      ];
+      openSelectedUrl();
     }
   };
 
@@ -150,26 +100,39 @@ const App = () => {
         value={searchTerm}
       />
       <ul>
-        {searchResults.map((bookmark, i) => {
-          const [before, match, after] = getMatchParts(
-            searchTerm,
-            bookmark.title
+        {searchResults.map((bookmark, index) => {
+          const parts: React.ReactNode[] = [];
+
+          // TODO: Get rid of this mutability, perhaps with a .reduce() of
+          // bookmark.matches?
+          let endOfLastMatch = 0;
+
+          for (const match of bookmark.matches) {
+            const plain = bookmark.text.substring(endOfLastMatch, match.start);
+            const strong = (
+              <strong>
+                {bookmark.text.substring(
+                  match.start,
+                  match.start + match.length
+                )}
+              </strong>
+            );
+
+            parts.push(plain, strong);
+
+            endOfLastMatch = match.start + match.length;
+          }
+
+          parts.push(
+            bookmark.text.substring(endOfLastMatch, bookmark.text.length)
           );
-          return selectedResult === i ? (
-            <li className="selected" key={bookmark.id}>
-              <a href={bookmark.url}>
-                {before}
-                <strong>{match}</strong>
-                {after}
-              </a>
-            </li>
-          ) : (
-            <li key={bookmark.id}>
-              <a href={bookmark.url}>
-                {before}
-                <strong>{match}</strong>
-                {after}
-              </a>
+
+          return (
+            <li
+              className={index === selectedResult ? "selected" : ""}
+              key={bookmark.url}
+            >
+              <a href={bookmark.url}>{parts}</a>
             </li>
           );
         })}
