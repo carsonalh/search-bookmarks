@@ -1,0 +1,33 @@
+const manifest = {
+  name: "Search Bookmarks",
+  description: "Tool to rapidly search through all one's chrome bookmarks",
+  background: {
+    service_worker: "background.js",
+  },
+  permissions: ["bookmarks"],
+  action: {
+    default_popup: "popup.html",
+    default_icon: {
+      16: "images/bookmark_search_16x16.png",
+      32: "images/bookmark_search_32x32.png",
+      48: "images/bookmark_search_48x48.png",
+      128: "images/bookmark_search_128x128.png",
+    },
+  },
+  commands: {
+    _execute_action: {
+      suggested_key: {
+        default: "Ctrl+Shift+L",
+      },
+    },
+  },
+  icons: {
+    16: "images/bookmark_search_16x16.png",
+    32: "images/bookmark_search_32x32.png",
+    48: "images/bookmark_search_48x48.png",
+    128: "images/bookmark_search_128x128.png",
+  },
+  options_page: "options.html",
+};
+
+module.exports = manifest;
