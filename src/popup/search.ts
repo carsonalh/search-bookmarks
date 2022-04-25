@@ -1,3 +1,8 @@
+export type Match = {
+  start: number;
+  length: number;
+};
+
 export type SearchResult = Readonly<{
   /** There can be more than one match on a search result, e.g. with search term
    * "s" and result "Software as a Service", there would be three matches.
@@ -5,14 +10,13 @@ export type SearchResult = Readonly<{
    * When called by `searchBookmarkTree`, this list is guaranteed to be sorted
    * by each match's `start`.
    */
-  matches: Readonly<{
-    start: number;
-    length: number;
-  }>[];
+  matches: Readonly<Match>[];
   /** The text which was matched */
   text: string;
   /** The url pertaining to the match */
   url: string;
+  /** A unique key for this search result, for identification purposes */
+  key: string;
 }>;
 
 export function searchBookmarkTree(
@@ -20,8 +24,6 @@ export function searchBookmarkTree(
   node: chrome.bookmarks.BookmarkTreeNode
 ): SearchResult[] {
   if (!node.children && node.url) {
-    type Match = SearchResult["matches"][number];
-
     // Get all substring occurrences of "term" in "node.title"
     const matches = node.title
       .split("")
@@ -59,6 +61,7 @@ export function searchBookmarkTree(
             matches,
             text: node.title,
             url: node.url,
+            key: node.id,
           },
         ]
       : [];

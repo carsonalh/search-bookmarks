@@ -130,7 +130,7 @@ const App = () => {
           return (
             <li
               className={index === selectedResult ? "selected" : ""}
-              key={bookmark.url}
+              key={bookmark.key}
             >
               <a href={bookmark.url}>{parts}</a>
             </li>
